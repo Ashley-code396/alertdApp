@@ -6,7 +6,7 @@ export default function Home() {
     <div className="min-h-screen bg-slate-900 text-white">
       {/* Header */}
       <header className="flex items-center justify-between p-6">
-        <h1 className="text-2xl font-bold text-cyan-400">SUI Emergency</h1>
+        <h1 className="text-2xl font-bold text-cyan-400">Emergency</h1>
         <ConnectButton />
       </header>
 

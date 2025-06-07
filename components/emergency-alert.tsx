@@ -1,10 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Bell, CheckCircle, Loader2 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -14,14 +13,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
-// Mock wallet hook for demo purposes
 function useWallet() {
   const [connected, setConnected] = useState(false)
 
   return {
     connected,
     signAndExecuteTransactionBlock: async (params: any) => {
-      // Mock transaction execution
       return {
         digest: "0x" + Math.random().toString(16).substr(2, 64),
       }
@@ -30,24 +27,49 @@ function useWallet() {
 }
 
 export function EmergencyAlert() {
-  const { connected, signAndExecuteTransactionBlock } = useWallet()
+  const { signAndExecuteTransactionBlock } = useWallet()
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
-  const [message, setMessage] = useState("")
   const [showDialog, setShowDialog] = useState(false)
   const [txHash, setTxHash] = useState("")
+  const [location, setLocation] = useState<string | null>(null)
 
-  const sendEmergencyAlert = async () => {
-    if (!message.trim()) return
+  const fetchLocation = () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: "Geolocation not supported",
+        description: "Your browser does not support geolocation",
+        variant: "destructive",
+      })
+      return
+    }
 
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords
+        // You can later replace this with maps.js or reverse geocoding API
+        setLocation(`Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`)
+        await sendEmergencyAlert(`Lat: ${latitude}, Lng: ${longitude}`)
+      },
+      (error) => {
+        toast({
+          title: "Location error",
+          description: error.message,
+          variant: "destructive",
+        })
+        setLoading(false)
+      }
+    )
+  }
+
+  const sendEmergencyAlert = async (locationMessage: string) => {
     setLoading(true)
     try {
-      // Simulate blockchain transaction
       const result = await signAndExecuteTransactionBlock({
         transactionBlock: {
           moveCall: {
             target: "0x123::emergency::send_emergency_alert",
-            arguments: [message, Date.now().toString()],
+            arguments: [locationMessage, Date.now().toString()],
           },
         },
       })
@@ -74,49 +96,34 @@ export function EmergencyAlert() {
 
   const resetState = () => {
     setSuccess(false)
-    setMessage("")
     setShowDialog(false)
+    setLocation(null)
   }
 
   return (
     <div className="text-center max-w-2xl mx-auto space-y-8">
-      {/* Alert Icon */}
       <div className="flex justify-center">
         <div className="bg-red-500 p-4 rounded-full">
           <Bell className="w-8 h-8 text-white" />
         </div>
       </div>
 
-      {/* Emergency Alert Heading */}
       <h2 className="text-4xl md:text-5xl font-bold text-red-500 flex items-center justify-center gap-3">
         <Bell className="w-8 h-8" />
         EMERGENCY ALERT
       </h2>
 
-      {/* Description */}
       <p className="text-slate-300 text-lg md:text-xl leading-relaxed">
-        Send critical security alerts to all connected users in your SUI dApp network. Use responsibly for genuine
-        emergencies only.
+        Instantly notify emergency services with your current location. This action is permanent and should only be used
+        in actual emergencies.
       </p>
 
-      {/* Message Input */}
-      <div className="pt-4">
-        <Textarea
-          placeholder="Describe the emergency situation..."
-          className="bg-slate-800 border-slate-700 text-white"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          rows={4}
-        />
-      </div>
-
-      {/* Send Alert Button */}
       <div className="pt-4">
         <Button
           size="lg"
           className="bg-red-500 hover:bg-red-600 text-white font-bold px-12 py-4 text-lg rounded-lg transition-colors"
-          onClick={() => sendEmergencyAlert()}
-          disabled={loading || !message.trim()}
+          onClick={fetchLocation}
+          disabled={loading}
         >
           {loading ? (
             <>
@@ -129,7 +136,6 @@ export function EmergencyAlert() {
         </Button>
       </div>
 
-      {/* Success Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="bg-slate-800 text-white border-slate-700">
           <DialogHeader>
@@ -138,17 +144,24 @@ export function EmergencyAlert() {
               Alert Sent Successfully
             </DialogTitle>
             <DialogDescription className="text-slate-300">
-              Your emergency alert has been recorded on the SUI blockchain and sent to service providers.
+              Your emergency alert has been recorded. Confirm if this is your current location:
             </DialogDescription>
           </DialogHeader>
 
-          <div className="bg-slate-900 p-4 rounded-md">
+          {location && (
+            <div className="bg-slate-900 p-4 rounded-md">
+              <p className="text-sm text-slate-400 mb-1">Detected Location:</p>
+              <p className="text-sm text-cyan-400 font-mono">{location}</p>
+            </div>
+          )}
+
+          <div className="bg-slate-900 p-4 rounded-md mt-4">
             <p className="text-sm text-slate-400 mb-1">Transaction Hash:</p>
             <p className="text-xs text-cyan-400 break-all font-mono">{txHash}</p>
           </div>
 
-          <p className="text-sm text-slate-300">
-            This transaction is now permanently recorded on the blockchain with a timestamp for accountability.
+          <p className="text-sm text-slate-300 mt-2">
+            This action is permanently logged with a timestamp for verification.
           </p>
 
           <DialogFooter>
